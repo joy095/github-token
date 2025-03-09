@@ -1,13 +1,47 @@
+###
 GET http://localhost:3000/github
 
 ###
 GET http://localhost:3000/github/github-token
 
 ###
+GET http://localhost:3000/github/github-token/commits
+
+###
+GET http://localhost:3000/github/github-token/branches
+
+
+###
+GET http://localhost:3000/github/github-token/issues
+
+###
+GET http://localhost:3000/github/github-token/issues/1
+
+###
 POST http://localhost:3000/github/github-token/issues
 Content-Type: application/json
 
 {
-  "title": "Test Issue",
-  "body": "This is a test issue"
+  "title": "New Issue Title",
+  "body": "Description of the new issue",
+  "labels": ["bug", "urgent"]
+}
+
+###
+PATCH http://localhost:3000/github/github-token/issues/1
+Content-Type: application/json
+
+{
+  "title": "Updated Issue Title",
+  "body": "Updated description of the issue",
+  "state": "open",
+  "labels": ["enhancement"]
+}
+
+###
+POST http://localhost:3000/github/github-token/issues/1/comments
+Content-Type: application/json
+
+{
+  "body": "This is a comment on the issue"
 }
