@@ -1,0 +1,13 @@
+GET http://localhost:3000/github
+
+###
+GET http://localhost:3000/github/github-token
+
+###
+POST http://localhost:3000/github/github-token/issues
+Content-Type: application/json
+
+{
+  "title": "Test Issue",
+  "body": "This is a test issue"
+}

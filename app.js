@@ -1,7 +1,8 @@
 // app.js
-const express = require('express');
-const { Octokit } = require('@octokit/rest');
-const dotenv = require('dotenv');
+const express = require("express");
+const { Octokit } = require("@octokit/rest");
+const dotenv = require("dotenv");
+const logger = require("./utils/logger");
 
 // Load environment variables
 dotenv.config();
@@ -11,37 +12,38 @@ app.use(express.json());
 
 // Initialize Octokit with GitHub token
 const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN
+  auth: process.env.GITHUB_TOKEN,
 });
 
 // Set the GitHub username (replace with your own)
-const GITHUB_USERNAME = process.env.GITHUB_USERNAME || 'your-username';
+const GITHUB_USERNAME = process.env.GITHUB_USERNAME || "your-username";
 
 // GET /github - Show user data and repositories
-app.get('/github', async (req, res) => {
+app.get("/github", async (req, res) => {
+  logger.info("Get github endpoint hit...");
   try {
     // Get user information
     const userResponse = await octokit.users.getByUsername({
-      username: GITHUB_USERNAME
+      username: GITHUB_USERNAME,
     });
-    
+
     // Get user repositories
     const reposResponse = await octokit.repos.listForUser({
       username: GITHUB_USERNAME,
-      sort: 'updated',
-      per_page: 100
+      sort: "updated",
+      per_page: 100,
     });
-    
+
     // Get followers
     const followersResponse = await octokit.users.listFollowersForUser({
-      username: GITHUB_USERNAME
+      username: GITHUB_USERNAME,
     });
-    
+
     // Get following
     const followingResponse = await octokit.users.listFollowingForUser({
-      username: GITHUB_USERNAME
+      username: GITHUB_USERNAME,
     });
-    
+
     // Format the response
     const userData = {
       user: {
@@ -53,67 +55,73 @@ app.get('/github', async (req, res) => {
         public_repos: userResponse.data.public_repos,
         followers: userResponse.data.followers,
         following: userResponse.data.following,
-        created_at: userResponse.data.created_at
+        created_at: userResponse.data.created_at,
       },
-      repositories: reposResponse.data.map(repo => ({
+      repositories: reposResponse.data.map((repo) => ({
         name: repo.name,
         description: repo.description,
         html_url: repo.html_url,
         stars: repo.stargazers_count,
         forks: repo.forks_count,
         language: repo.language,
-        updated_at: repo.updated_at
+        updated_at: repo.updated_at,
       })),
-      followers: followersResponse.data.map(follower => ({
+      followers: followersResponse.data.map((follower) => ({
         login: follower.login,
         avatar_url: follower.avatar_url,
-        html_url: follower.html_url
+        html_url: follower.html_url,
       })),
-      following: followingResponse.data.map(following => ({
+      following: followingResponse.data.map((following) => ({
         login: following.login,
         avatar_url: following.avatar_url,
-        html_url: following.html_url
-      }))
+        html_url: following.html_url,
+      })),
     };
-    
+
+    logger.info("Get github userdata successful");
+
     res.json(userData);
   } catch (error) {
-    console.error('Error fetching GitHub data:', error);
-    res.status(500).json({ error: 'Failed to fetch GitHub data', details: error.message });
+    logger.error("Error fetching GitHub data:", error);
+    console.error("Error fetching GitHub data:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to fetch GitHub data", details: error.message });
   }
 });
 
 // GET /github/{repo-name} - Show data about a specific repository
-app.get('/github/:repoName', async (req, res) => {
+app.get("/github/:repoName", async (req, res) => {
+  logger.info("/github/:repoName endpoint hit...");
   try {
     const repoName = req.params.repoName;
-    
+
     // Get repository details
     const repoResponse = await octokit.repos.get({
       owner: GITHUB_USERNAME,
-      repo: repoName
+      repo: repoName,
     });
-    
+
     // Get repo languages
     const languagesResponse = await octokit.repos.listLanguages({
       owner: GITHUB_USERNAME,
-      repo: repoName
+      repo: repoName,
     });
-    
+
     // Get issues
     const issuesResponse = await octokit.issues.listForRepo({
       owner: GITHUB_USERNAME,
       repo: repoName,
-      state: 'all',
-      per_page: 10
+      state: "all",
+      per_page: 10,
     });
-    
+
     // Get contributors
     const contributorsResponse = await octokit.repos.listContributors({
       owner: GITHUB_USERNAME,
-      repo: repoName
+      repo: repoName,
     });
-    
+
     // Format the response
     const repoData = {
       name: repoResponse.data.name,
@@ -131,71 +139,85 @@ app.get('/github/:repoName', async (req, res) => {
       open_issues: repoResponse.data.open_issues_count,
       default_branch: repoResponse.data.default_branch,
       languages: languagesResponse.data,
-      issues: issuesResponse.data.map(issue => ({
+      issues: issuesResponse.data.map((issue) => ({
         number: issue.number,
         title: issue.title,
         html_url: issue.html_url,
         state: issue.state,
         created_at: issue.created_at,
-        comments: issue.comments
+        comments: issue.comments,
       })),
-      contributors: contributorsResponse.data.map(contributor => ({
+      contributors: contributorsResponse.data.map((contributor) => ({
         login: contributor.login,
         contributions: contributor.contributions,
         avatar_url: contributor.avatar_url,
-        html_url: contributor.html_url
-      }))
+        html_url: contributor.html_url,
+      })),
     };
-    
+
+    logger.info("Get /github/:repoName userdata successful");
+
     res.json(repoData);
   } catch (error) {
-    console.error(`Error fetching repository data for ${req.params.repoName}:`, error);
-    res.status(error.status || 500).json({ 
-      error: `Failed to fetch repository data for ${req.params.repoName}`, 
-      details: error.message 
+    logger.error(
+      `Error fetching repository data for ${req.params.repoName}:`,
+      error
+    );
+
+    console.error(
+      `Error fetching repository data for ${req.params.repoName}:`,
+      error
+    );
+    res.status(error.status || 500).json({
+      error: `Failed to fetch repository data for ${req.params.repoName}`,
+      details: error.message,
     });
   }
 });
 
 // POST /github/{repo-name}/issues - Create a new issue
-app.post('/github/:repoName/issues', async (req, res) => {
+app.post("/github/:repoName/issues", async (req, res) => {
+  logger.info("Post /github/:repoName/issues endpoint hit...");
   try {
     const { title, body } = req.body;
     const repoName = req.params.repoName;
-    
+
     // Validate request body
     if (!title) {
-      return res.status(400).json({ error: 'Issue title is required' });
+      return res.status(400).json({ error: "Issue title is required" });
     }
-    
+
+    logger.info("Create Issue successful");
+
     // Create the issue
     const issueResponse = await octokit.issues.create({
       owner: GITHUB_USERNAME,
       repo: repoName,
       title: title,
-      body: body || ''
+      body: body || "",
     });
-    
+
     // Return the issue URL and data
     res.status(201).json({
-      message: 'Issue created successfully',
+      message: "Issue created successfully",
       issue_url: issueResponse.data.html_url,
       issue_number: issueResponse.data.number,
       title: issueResponse.data.title,
-      created_at: issueResponse.data.created_at
+      created_at: issueResponse.data.created_at,
     });
   } catch (error) {
+    logger.error(`Error creating issue for ${req.params.repoName}:`, error);
     console.error(`Error creating issue for ${req.params.repoName}:`, error);
-    res.status(error.status || 500).json({ 
-      error: `Failed to create issue for ${req.params.repoName}`, 
-      details: error.message 
+    res.status(error.status || 500).json({
+      error: `Failed to create issue for ${req.params.repoName}`,
+      details: error.message,
     });
   }
 });
 
 // Error handling for invalid routes
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ error: "Route not found" });
 });
 
 const PORT = process.env.PORT || 3000;
